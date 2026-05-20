@@ -238,6 +238,7 @@ textarea{resize:none}
     <button class="chip" onclick="setTipo('adhesivo',this)">Adhesivos</button>
     <button class="chip" onclick="setTipo('pinza',this)">Pinzas</button>
     <button class="chip" onclick="setTipo('insumo',this)">Insumos</button>
+    <button class="chip" onclick="setTipo('otro',this)">Otros</button>
   </div>
   <div class="fbar" id="f-marca" style="padding-top:0;display:none"></div>
   <div id="cmd-list" class="cmd-list"></div>
@@ -265,6 +266,7 @@ textarea{resize:none}
       <button class="chip" onclick="setCatF('adhesivo',this)">Adhesivos</button>
       <button class="chip" onclick="setCatF('pinza',this)">Pinzas</button>
       <button class="chip" onclick="setCatF('insumo',this)">Insumos</button>
+      <button class="chip" onclick="setCatF('otro',this)">Otros</button>
     </div>
     <div id="cat-list" style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px"></div>
   </div>
@@ -467,6 +469,7 @@ textarea{resize:none}
         <option value="adhesivo">Adhesivo</option>
         <option value="pinza">Pinza</option>
         <option value="insumo">Insumo</option>
+        <option value="otro">Otro</option>
       </select>
     </div>
     <div id="p-fields"></div>
@@ -794,10 +797,11 @@ function pNom(p){
   if(p.tipo==="adhesivo")  return p.marca+" - "+p.nombre;
   if(p.tipo==="pinza")     return p.marca+" - Pinza "+p.subtipo;
   if(p.tipo==="insumo")    return p.nombre;
+  if(p.tipo==="otro")      return p.nombre;
   return "Producto";
 }
-function tLabel(t){ return {clasica:"Fibra Clasica",tec:"Fibra Tec",adhesivo:"Adhesivo",pinza:"Pinza",insumo:"Insumo"}[t]||t; }
-function tClase(t){ return {clasica:"tc",tec:"tt",adhesivo:"ta",pinza:"tp",insumo:"ti"}[t]||""; }
+function tLabel(t){ return {clasica:"Fibra Clasica",tec:"Fibra Tec",adhesivo:"Adhesivo",pinza:"Pinza",insumo:"Insumo",otro:"Otro"}[t]||t; }
+function tClase(t){ return {clasica:"tc",tec:"tt",adhesivo:"ta",pinza:"tp",insumo:"ti",otro:"ti"}[t]||""; }
 function marcaP(p){ return p.marca||(p.tipo==="clasica"?"Nagaraku":null); }
 
 // ── FILTROS VENTA ─────────────────────────────────────
@@ -834,7 +838,7 @@ function renderProds(){
   var list=document.getElementById("cmd-list");
   if(!fl.length){list.innerHTML='<div class="empty"><div class="ei">&#128230;</div><p>Sin productos</p></div>';updBar();return;}
   var h="";
-  ["clasica","tec","adhesivo","pinza","insumo"].forEach(function(t){
+  ["clasica","tec","adhesivo","pinza","insumo","otro"].forEach(function(t){
     var ps=fl.filter(function(p){return p.tipo===t;}); if(!ps.length)return;
     if(t==="clasica") h+=secCla(ps);
     else if(t==="tec") h+=secTec(ps);
@@ -1204,6 +1208,7 @@ function saveProd(){
   else if(t==="adhesivo"){prod.marca=gC("Marca");var pn=document.getElementById("p-nombre");prod.nombre=pn?pn.value.trim():"";if(!prod.nombre){toast("Escribe el nombre","er");return;}}
   else if(t==="pinza"){prod.marca=gC("Marca");var ps=document.getElementById("p-subtipo");prod.subtipo=ps?ps.value.trim():"";if(!prod.marca||!prod.subtipo){toast("Selecciona marca y tipo","er");return;}}
   else if(t==="insumo"){var pn2=document.getElementById("p-nombre");prod.nombre=pn2?pn2.value.trim():"";if(!prod.nombre){toast("Escribe el nombre","er");return;}}
+  else if(t==="otro"){var pn3=document.getElementById("p-nombre");prod.nombre=pn3?pn3.value.trim():"";if(!prod.nombre){toast("Escribe el nombre","er");return;}}
   if(!pMen){toast("Agrega precio de menudeo","er");return;}
   if(editId){var idx=DB.prods.findIndex(function(x){return x.id===editId;});if(idx>=0){prod.id=editId;DB.prods[idx]=prod;}}
   else{prod.id=Date.now();DB.prods.push(prod);}
