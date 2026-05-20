@@ -555,6 +555,9 @@ textarea:focus{border-color:var(--rosa)}
       <div class="fi" style="margin-bottom:0"><label>Precio menudeo</label><input id="p-precio-men" type="number" inputmode="decimal" placeholder="0.00"></div>
       <div class="fi" style="margin-bottom:0"><label>Precio mayoreo</label><input id="p-precio-may" type="number" inputmode="decimal" placeholder="0.00"></div>
     </div>
+    <div class="fi"><label>Costo (precio al que te cuesta)</label>
+      <input id="p-costo" type="number" inputmode="decimal" placeholder="0.00">
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div class="fi" style="margin-bottom:0"><label>Stock tienda</label><input id="p-stock" type="number" inputmode="numeric" placeholder="0"></div>
       <div class="fi" style="margin-bottom:0"><label>Stock bodega</label><input id="p-stock-bodega" type="number" inputmode="numeric" placeholder="0"></div>
@@ -1183,17 +1186,44 @@ function enviarResumen(){
     if(y>185){doc.addPage();y=16;}
   });
 
-  var blob=doc.output("blob");
-  var file=new File([blob],"resumen-"+hoy.replace(/\//g,"-")+".pdf",{type:"application/pdf"});
-  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-    navigator.share({title:"Resumen L-Ash Art "+hoy,files:[file]}).catch(function(){});
-  } else {
-    doc.save("resumen-"+hoy.replace(/\//g,"-")+".pdf");
-    toast("PDF guardado","sv");
+  // Sección stock
+  y+=3; doc.line(lm,y,lm+pw,y); y+=6;
+  doc.setFont("helvetica","bold"); doc.setFontSize(11);
+  doc.text("STOCK DE TIENDA",lm,y); y+=6;
+  doc.setFont("helvetica","normal"); doc.setFontSize(10);
+  var min2=Number(DB.config.bodegaMin)||5;
+  var agotado2=DB.prods.filter(function(p){return (p.stock||0)<=0;}).length;
+  var bajo2=DB.prods.filter(function(p){return (p.stock||0)>0&&(p.stock||0)<=min2;}).length;
+  var bien2=DB.prods.length-agotado2-bajo2;
+  doc.text("Disponibles: "+bien2,lm,y); y+=5;
+  if(bajo2>0){doc.text("Alerta stock minimo: "+bajo2,lm,y); y+=5;}
+  doc.text("Agotados: "+agotado2,lm,y); y+=5;
+  if(agotado2>0){
+    doc.setFont("helvetica","bold"); doc.setFontSize(9); y+=2;
+    doc.text("Productos agotados:",lm,y); y+=4;
+    doc.setFont("helvetica","normal");
+    DB.prods.filter(function(p){return (p.stock||0)<=0;}).forEach(function(p){
+      if(y>185){doc.addPage();y=16;}
+      doc.text("- "+prodNombre(p).substring(0,38),lm+3,y); y+=4;
+    });
   }
-}
+  // Sección ganancias
+  y+=3; doc.line(lm,y,lm+pw,y); y+=6;
+  doc.setFont("helvetica","bold"); doc.setFontSize(11);
+  doc.text("GANANCIAS DEL DIA",lm,y); y+=6;
+  doc.setFont("helvetica","normal"); doc.setFontSize(10);
+  var ganTotal=0, sinCosto=false;
+  hv.forEach(function(v){
+    v.items.forEach(function(it){
+      var prod=DB.prods.find(function(p){return p.id===it.prodId;});
+      if(prod&&prod.costo>0) ganTotal+=(it.precio-prod.costo)*it.qty;
+      else if(it.prodId) sinCosto=true;
+    });
+  });
+  doc.text("Ganancia estimada: $"+ganTotal.toFixed(2),lm,y); y+=5;
+  if(sinCosto){doc.setFontSize(8);doc.setTextColor(120);doc.text("(algunos productos sin costo registrado)",lm,y);doc.setFontSize(10);doc.setTextColor(0);y+=5;}
 
-// ── PDF ───────────────────────────────────────────────────
+  var blob=doc.output("blob");
 var _ventaActual=null;
 function compartirPDF(){
   if(!_ventaActual){toast("Sin datos de venta","er");return;}
@@ -1279,19 +1309,21 @@ function renderCatalogo(){
   if(!fl.length){list.innerHTML='<div class="empty"><div class="ei">&#128230;</div><p>Sin productos</p></div>';return;}
   list.innerHTML=fl.map(function(p){
     var sc=p.stock<=0?"color:var(--rj)":p.stock<=5?"color:var(--gold)":"color:var(--ok)";
+    var ganancia=p.costo>0?"Ganancia: <span style='color:var(--ok);font-weight:700'>$"+(p.precioMenudeo-p.costo).toFixed(2)+"</span> ("+(((p.precioMenudeo-p.costo)/p.costo)*100).toFixed(0)+"%)":"";
     return "<div class='card-sm' style='display:flex;justify-content:space-between;align-items:center'>"
       +"<div style='flex:1;min-width:0'><span class='tag "+tipoClase(p.tipo)+"' style='margin-bottom:4px'>"+tipoLabel(p.tipo)+"</span>"
       +"<div style='font-size:13px;font-weight:700;margin:4px 0 2px'>"+prodNombre(p)+"</div>"
-      +"<div style='font-size:12px;color:var(--tx2)'>Men: $"+(p.precioMenudeo||0).toFixed(2)+" | May: $"+(p.precioMayoreo||0).toFixed(2)+"</div>"
-      +"<div style='font-size:12px;"+sc+"'>Stock: "+p.stock+"</div></div>"
+      +"<div style='font-size:12px;color:var(--tx2)'>Men: $"+(p.precioMenudeo||0).toFixed(2)+" | May: $"+(p.precioMayoreo||0).toFixed(2)+(p.costo?" | Costo: $"+p.costo.toFixed(2):"")+"</div>"
+      +(ganancia?"<div style='font-size:12px;margin-top:2px'>"+ganancia+"</div>":"")
+      +"<div style='font-size:12px;"+sc+"'>Stock tienda: "+p.stock+(p.stockBodega?" | Bodega: "+p.stockBodega:"")+"</div></div>"
       +"<div style='display:flex;flex-direction:column;gap:6px;margin-left:10px'>"
       +"<button class='btn-sm' style='background:var(--az-c);color:var(--az)' onclick='editProd("+p.id+")'>&#9999;&#65039;</button>"
       +"<button class='btn-sm' style='background:var(--rj-c);color:var(--rj)' onclick='deleteProd("+p.id+")'>&#128465;</button>"
       +"</div></div>";
   }).join("");
 }
-function openAddProd(){ editProdId=null; document.getElementById("addp-title").textContent="Nuevo producto"; document.getElementById("p-tipo").value="fibra_clasica"; document.getElementById("p-precio-men").value=""; document.getElementById("p-precio-may").value=""; document.getElementById("p-stock").value=""; document.getElementById("p-stock-bodega").value=""; renderProdForm(); document.getElementById("modal-prod").classList.add("open"); }
-function editProd(id){ var p=DB.prods.find(function(x){return x.id===id;}); if(!p)return; editProdId=id; document.getElementById("addp-title").textContent="Editar producto"; document.getElementById("p-tipo").value=p.tipo; document.getElementById("p-precio-men").value=p.precioMenudeo||""; document.getElementById("p-precio-may").value=p.precioMayoreo||""; document.getElementById("p-stock").value=p.stock||""; document.getElementById("p-stock-bodega").value=p.stockBodega||""; renderProdForm(p); document.getElementById("modal-prod").classList.add("open"); }
+function openAddProd(){ editProdId=null; document.getElementById("addp-title").textContent="Nuevo producto"; document.getElementById("p-tipo").value="fibra_clasica"; document.getElementById("p-precio-men").value=""; document.getElementById("p-precio-may").value=""; document.getElementById("p-costo").value=""; document.getElementById("p-stock").value=""; document.getElementById("p-stock-bodega").value=""; renderProdForm(); document.getElementById("modal-prod").classList.add("open"); }
+function editProd(id){ var p=DB.prods.find(function(x){return x.id===id;}); if(!p)return; editProdId=id; document.getElementById("addp-title").textContent="Editar producto"; document.getElementById("p-tipo").value=p.tipo; document.getElementById("p-precio-men").value=p.precioMenudeo||""; document.getElementById("p-precio-may").value=p.precioMayoreo||""; document.getElementById("p-costo").value=p.costo||""; document.getElementById("p-stock").value=p.stock||""; document.getElementById("p-stock-bodega").value=p.stockBodega||""; renderProdForm(p); document.getElementById("modal-prod").classList.add("open"); }
 function deleteProd(id){ if(!confirm("Eliminar este producto?"))return; DB.prods=DB.prods.filter(function(x){return x.id!==id;}); guardar("prods"); renderCatalogo(); renderProds(); toast("Producto eliminado"); }
 
 function renderProdForm(ex){
@@ -1309,8 +1341,8 @@ function selChip(el){ el.closest(".chip-wrap").querySelectorAll(".chip").forEach
 function getChip(lbl){ var fis=document.querySelectorAll("#prod-form-fields .fi"); for(var i=0;i<fis.length;i++){var l=fis[i].querySelector("label");if(l&&l.textContent===lbl){var on=fis[i].querySelector(".chip.on[data-val]");return on?on.dataset.val:null;}} return null; }
 
 function saveProduct(){
-  var tipo=document.getElementById("p-tipo").value,pMen=parseFloat(document.getElementById("p-precio-men").value)||0,pMay=parseFloat(document.getElementById("p-precio-may").value)||0,stock=parseInt(document.getElementById("p-stock").value)||0,stockBodega=parseInt(document.getElementById("p-stock-bodega").value)||0;
-  var prod={tipo:tipo,precioMenudeo:pMen,precioMayoreo:pMay,stock:stock,stockBodega:stockBodega};
+  var tipo=document.getElementById("p-tipo").value,pMen=parseFloat(document.getElementById("p-precio-men").value)||0,pMay=parseFloat(document.getElementById("p-precio-may").value)||0,costo=parseFloat(document.getElementById("p-costo").value)||0,stock=parseInt(document.getElementById("p-stock").value)||0,stockBodega=parseInt(document.getElementById("p-stock-bodega").value)||0;
+  var prod={tipo:tipo,precioMenudeo:pMen,precioMayoreo:pMay,costo:costo,stock:stock,stockBodega:stockBodega};
   if(tipo==="fibra_clasica"){prod.grosor=getChip("Grosor");prod.curva=getChip("Curva");prod.largo=getChip("Largo");if(prod.curva==="custom"){var cc=document.getElementById("curva-custom");prod.curvaLabel=cc?cc.value.trim()||"Otra":"Otra";}else prod.curvaLabel=prod.curva||"";if(!prod.grosor||!prod.curva||!prod.largo){toast("Selecciona grosor, curva y largo","er");return;}}
   else if(tipo==="fibra_tec"){prod.marca=getChip("Marca");prod.dimension=getChip("Dimension");prod.curva=getChip("Curva");prod.largo=getChip("Largo");if(prod.curva==="custom"){var cc2=document.getElementById("curva-custom");prod.curvaLabel=cc2?cc2.value.trim()||"Otra":"Otra";}else prod.curvaLabel=prod.curva||"";if(!prod.marca||!prod.dimension||!prod.curva||!prod.largo){toast("Completa todos los campos","er");return;}}
   else if(tipo==="adhesivo"){prod.marca=getChip("Marca");var pn=document.getElementById("p-nombre");prod.nombre=pn?pn.value.trim():"";if(!prod.nombre){toast("Escribe el nombre","er");return;}}
@@ -1444,6 +1476,31 @@ function saveBodegaConfig(){
 // ── REPORTES ──────────────────────────────────────────────
 var rVista="hoy";
 function setRVista(v,btn){ rVista=v; document.querySelectorAll("#screen-reportes .chip").forEach(function(c){c.classList.remove("on");}); btn.classList.add("on"); renderReportes(); }
+function stockChart(){
+  var prods=DB.prods; var total=prods.length; if(!total) return "";
+  var min=Number(DB.config.bodegaMin)||5;
+  var agotado=prods.filter(function(p){return (p.stock||0)<=0;}).length;
+  var bajo=prods.filter(function(p){return (p.stock||0)>0&&(p.stock||0)<=min;}).length;
+  var bien=total-agotado-bajo;
+  var pB=(bien/total*360), pM=(bajo/total*360), pA=(agotado/total*360);
+  // conic-gradient donut
+  var g="conic-gradient(var(--ok) 0deg "+(pB)+"deg,var(--gold) "+(pB)+"deg "+(pB+pM)+"deg,var(--rj) "+(pB+pM)+"deg 360deg)";
+  return "<div class='card'>"
+    +"<div style='font-weight:700;font-size:15px;margin-bottom:14px'>&#128202; Stock de tienda</div>"
+    +"<div style='display:flex;align-items:center;gap:20px'>"
+    +"<div style='position:relative;width:120px;height:120px;flex-shrink:0'>"
+    +"<div style='width:120px;height:120px;border-radius:50%;background:"+g+"'></div>"
+    +"<div style='position:absolute;inset:22px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center'>"
+    +"<div style='font-size:20px;font-weight:700'>"+total+"</div>"
+    +"<div style='font-size:9px;color:var(--tx3);text-transform:uppercase'>productos</div>"
+    +"</div></div>"
+    +"<div style='display:flex;flex-direction:column;gap:10px;flex:1'>"
+    +"<div style='display:flex;align-items:center;justify-content:space-between'><div style='display:flex;align-items:center;gap:8px'><div style='width:12px;height:12px;border-radius:50%;background:var(--ok)'></div><span style='font-size:13px'>Disponibles</span></div><span style='font-size:15px;font-weight:700'>"+bien+"</span></div>"
+    +(bajo>0?"<div style='display:flex;align-items:center;justify-content:space-between'><div style='display:flex;align-items:center;gap:8px'><div style='width:12px;height:12px;border-radius:50%;background:var(--gold)'></div><span style='font-size:13px'>Stock m&#237;nimo</span></div><span style='font-size:15px;font-weight:700'>"+bajo+"</span></div>":"")
+    +"<div style='display:flex;align-items:center;justify-content:space-between'><div style='display:flex;align-items:center;gap:8px'><div style='width:12px;height:12px;border-radius:50%;background:var(--rj)'></div><span style='font-size:13px'>Agotados</span></div><span style='font-size:15px;font-weight:700'>"+agotado+"</span></div>"
+    +"</div></div></div>";
+}
+
 function renderReportes(){
   var hoy=new Date().toLocaleDateString("es-MX");
   var fl=DB.ventas.filter(function(v){
@@ -1470,7 +1527,7 @@ function renderReportes(){
         +"<div><div style='font-size:12px;font-weight:700;color:var(--rosa);font-family:monospace'>#"+v.num+"</div><div style='font-size:11px;color:var(--tx3)'>"+v.fecha+" "+v.hora+"</div></div>"
         +"<div style='text-align:right'><div style='font-size:15px;font-weight:700'>$"+v.total.toFixed(2)+"</div><div style='font-size:11px;color:var(--tx3)'>"+ic+" "+v.metodo+"</div></div></div>";
     }).join("")+"</div>";
-  cont.innerHTML=h;
+  cont.innerHTML = stockChart() + h;
 }
 function openDetVenta(id){
   var v=DB.ventas.find(function(x){return x.id===id;}); if(!v)return;
