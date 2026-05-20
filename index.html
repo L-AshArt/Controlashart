@@ -953,7 +953,11 @@ function addCmd(){
 // ── CARRITO ───────────────────────────────────────────
 var cart=[], cupDat=null;
 
+function saveCart(){ try{ localStorage.setItem("la_cart", JSON.stringify(cart)); }catch(e){} }
+function loadCart(){ try{ var c=localStorage.getItem("la_cart"); if(c) cart=JSON.parse(c); }catch(e){} }
+
 function updCartBadge(){
+  saveCart();
   var b=document.getElementById("cart-badge"), t=cart.reduce(function(s,x){return s+x.qty;},0);
   b.style.display=t>0?"block":"none"; b.textContent=t; calcCart();
 }
@@ -993,7 +997,7 @@ function renderCartItems(){
 
 function chQty(i,d){ var p=DB.prods.find(function(x){return x.id===cart[i].prodId;}); if(d>0&&p&&cart[i].qty>=p.stock){toast("Stock m&#225;ximo","er");return;} cart[i].qty+=d; if(cart[i].qty<=0)cart.splice(i,1); if(!cart.length)closeMod("m-cart"); updCartBadge(); renderCartItems(); }
 function rmItem(i){ cart.splice(i,1); updCartBadge(); renderCartItems(); if(!cart.length)closeMod("m-cart"); }
-function clearCart(){ if(!confirm("&#191;Vaciar carrito?"))return; cart=[]; cupDat=null; cmdQ={}; updCartBadge(); updBar(); closeMod("m-cart"); }
+function clearCart(){ if(!confirm("&#191;Vaciar carrito?"))return; cart=[]; cupDat=null; cmdQ={}; localStorage.removeItem("la_cart"); updCartBadge(); updBar(); closeMod("m-cart"); }
 
 function applyCup(){
   var cod=document.getElementById("cup-in").value.trim().toUpperCase(); if(!cod)return;
@@ -1033,7 +1037,7 @@ function completarVenta(){
   cart.forEach(function(it){var p=DB.prods.find(function(x){return x.id===it.prodId;});if(p)p.stock=Math.max(0,p.stock-it.qty);}); save("prods");
   if(cupDat){var ci=DB.cups.findIndex(function(c){return c.codigo===cupDat.codigo;});if(ci>=0)DB.cups[ci].usosAct=(DB.cups[ci].usosAct||0)+1;save("cups");}
   if(v.cli.tel){var tel=v.cli.tel;if(!DB.cli[tel])DB.cli[tel]={nombre:v.cli.nombre,tel:tel,sellos:0};DB.cli[tel].sellos++;var sm=+(DB.cfg.sellosMeta)||5;if(DB.cli[tel].sellos>=sm){DB.cli[tel].sellos=0;setTimeout(function(){toast("Recompensa: "+(DB.cfg.sellosReward||"premio"),"in");},600);}save("cli");}
-  cart=[]; cupDat=null; cmdQ=[];
+  cart=[]; cupDat=null; cmdQ={}; localStorage.removeItem("la_cart");
   ["disc-v","cup-in","cli-nom","cli-tel","v-notas"].forEach(function(id){document.getElementById(id).value="";});
   document.getElementById("cup-lbl").style.display="none";
   updCartBadge(); updBar(); closeMod("m-pago"); renderProds(); mostrarTicket(v);
@@ -1332,6 +1336,7 @@ async function rcheck(){
 
 // ── ARRANQUE ──────────────────────────────────────────
 function initApp(){
+  loadCart();
   if(role==="empleada"){
     ["n-catalogo","n-reportes","n-config"].forEach(function(id){document.getElementById(id).style.display="none";});
     var bar=document.getElementById("emp-bar"); bar.style.display="flex";
