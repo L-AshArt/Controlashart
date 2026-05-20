@@ -1115,6 +1115,120 @@ function enviarResumen(){
   var ta=hv.filter(function(v){return v.metodo==="tarjeta";}).reduce(function(s,v){return s+v.tot;},0);
   var tr=hv.filter(function(v){return v.metodo==="transferencia";}).reduce(function(s,v){return s+v.tot;},0);
   var emp=DB.cfg.empNombre||"Empleada";
+  var gan=0;
+  hv.forEach(function(v){v.items.forEach(function(it){var p=DB.prods.find(function(x){return x.id===it.prodId;});if(p&&p.costo>0)gan+=(it.precio-p.costo)*it.qty;});});
+
+  // Productos vendidos hoy con stock bajo
+  var vendidosIds={};
+  hv.forEach(function(v){v.items.forEach(function(it){if(it.prodId)vendidosIds[it.prodId]=(vendidosIds[it.prodId]||0)+it.qty;});});
+  var stockBajo=[];
+  Object.keys(vendidosIds).forEach(function(id){
+    var p=DB.prods.find(function(x){return x.id==id;});
+    if(p&&(p.stock||0)<=(+(DB.cfg.bodegaMin)||5)) stockBajo.push({prod:p,vendidas:vendidosIds[id]});
+  });
+
+  var J=window.jspdf.jsPDF;
+  var doc=new J({unit:"mm",format:"a4",orientation:"portrait"});
+  var lm=20, rm=190, pw=rm-lm, y=20;
+
+  // ── ENCABEZADO ──
+  doc.setFillColor(196,121,138);
+  doc.rect(0,0,210,35,"F");
+  doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.setTextColor(255,255,255);
+  doc.text("L-Ash Art",lm,22);
+  doc.setFont("helvetica","normal"); doc.setFontSize(10);
+  doc.text("Reporte de Ventas  |  "+hoy,lm,30);
+  doc.text("Elaborado por: "+emp,rm,30,{align:"right"});
+  y=48; doc.setTextColor(28,28,46);
+
+  // ── RESUMEN ──
+  doc.setFillColor(253,248,245); doc.roundedRect(lm,y,pw,gan>0?34:28,3,3,"F");
+  doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.text("RESUMEN DEL D\u00CDA",lm+6,y+8);
+  doc.setFontSize(9); doc.setFont("helvetica","normal");
+  doc.text("Ventas realizadas:",lm+6,y+16);    doc.setFont("helvetica","bold"); doc.text(""+hv.length,lm+55,y+16);
+  doc.setFont("helvetica","normal");
+  doc.text("Total ingresos:",lm+6,y+22);        doc.setFont("helvetica","bold"); doc.text("$"+tot.toFixed(2),lm+55,y+22);
+  doc.setFont("helvetica","normal");
+  if(ef>0){doc.text("Efectivo: $"+ef.toFixed(2),lm+90,y+16);}
+  if(ta>0){doc.text("Tarjeta: $"+ta.toFixed(2),lm+90,y+22);}
+  if(tr>0){doc.text("Transfer.: $"+tr.toFixed(2),lm+90,y+28);}
+  if(gan>0){
+    doc.setFont("helvetica","normal"); doc.text("Ganancia estimada:",lm+6,y+28);
+    doc.setFont("helvetica","bold"); doc.setTextColor(107,158,120); doc.text("$"+gan.toFixed(2),lm+55,y+28); doc.setTextColor(28,28,46);
+  }
+  y+=(gan>0?40:34);
+
+  // ── DETALLE POR VENTA ──
+  doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(196,121,138);
+  doc.text("DETALLE DE VENTAS",lm,y); y+=3;
+  doc.setDrawColor(196,121,138); doc.setLineWidth(0.5); doc.line(lm,y,rm,y); y+=7;
+
+  hv.forEach(function(v){
+    if(y>250){doc.addPage();y=20;}
+    // Cabecera de cada venta
+    doc.setFillColor(249,237,240); doc.rect(lm,y,pw,7,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(196,121,138);
+    var ic=v.metodo==="efectivo"?"Efectivo":v.metodo==="tarjeta"?"Tarjeta":"Transferencia";
+    doc.text("Venta #"+v.num+"   "+v.hora+"   "+ic,lm+3,y+5);
+    doc.setTextColor(28,28,46); doc.text("TOTAL: $"+v.tot.toFixed(2),rm-3,y+5,{align:"right"});
+    y+=9;
+    // Cabecera columnas
+    doc.setFontSize(8); doc.setTextColor(107,107,123);
+    doc.text("Producto",lm+3,y); doc.text("Cant.",lm+105,y); doc.text("Precio unit.",lm+120,y); doc.text("Subtotal",rm-3,y,{align:"right"});
+    y+=4; doc.setDrawColor(220,215,210); doc.setLineWidth(0.2); doc.line(lm,y,rm,y); y+=4;
+    // Items
+    doc.setTextColor(28,28,46); doc.setFont("helvetica","normal");
+    v.items.forEach(function(it){
+      if(y>270){doc.addPage();y=20;}
+      var nom=it.nombre.substring(0,52);
+      doc.text(nom,lm+3,y);
+      doc.text(""+it.qty,lm+107,y);
+      doc.text("$"+it.precio.toFixed(2),lm+122,y);
+      doc.setFont("helvetica","bold"); doc.text("$"+(it.qty*it.precio).toFixed(2),rm-3,y,{align:"right"}); doc.setFont("helvetica","normal");
+      // Si tiene precio especial vs catálogo, indicar
+      var pcat=DB.prods.find(function(x){return x.id===it.prodId;});
+      if(pcat&&it._c){doc.setFontSize(7);doc.setTextColor(74,123,181);doc.text("precio especial",lm+3,y+3.5);doc.setFontSize(8);doc.setTextColor(28,28,46);}
+      y+=it._c?8:5.5;
+    });
+    if(v.desc>0){doc.setTextColor(192,72,74);doc.text("Descuento: -$"+v.desc.toFixed(2),rm-3,y,{align:"right"});doc.setTextColor(28,28,46);y+=5;}
+    if(v.notas){doc.setFontSize(7.5);doc.setTextColor(107,107,123);doc.text("Nota: "+v.notas.substring(0,70),lm+3,y);doc.setFontSize(8);doc.setTextColor(28,28,46);y+=5;}
+    doc.setDrawColor(196,121,138); doc.setLineWidth(0.3); doc.line(lm,y,rm,y); y+=8;
+  });
+
+  // ── STOCK BAJO (solo vendidos hoy) ──
+  if(stockBajo.length>0){
+    if(y>230){doc.addPage();y=20;}
+    doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(196,121,138);
+    doc.text("PRODUCTOS A REPONER",lm,y); y+=3;
+    doc.setDrawColor(196,121,138); doc.setLineWidth(0.5); doc.line(lm,y,rm,y); y+=4;
+    doc.setFontSize(8); doc.setTextColor(107,107,123); doc.setFont("helvetica","normal");
+    doc.text("Solo productos vendidos hoy con stock bajo en tienda",lm,y); y+=7;
+    // Cabecera
+    doc.setFillColor(249,237,240); doc.rect(lm,y,pw,7,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(28,28,46);
+    doc.text("Producto",lm+3,y+5); doc.text("Vendidas",lm+108,y+5); doc.text("Tienda",lm+132,y+5); doc.text("Bodega",lm+158,y+5); y+=9;
+    doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
+    stockBajo.forEach(function(r,ri){
+      if(y>275){doc.addPage();y=20;}
+      if(ri%2===0){doc.setFillColor(253,248,245);doc.rect(lm,y-1,pw,6,"F");}
+      doc.setTextColor(28,28,46); doc.text(pNom(r.prod).substring(0,57),lm+3,y+3);
+      doc.text(""+r.vendidas,lm+113,y+3);
+      var st=r.prod.stock||0;
+      if(st<=0){doc.setTextColor(192,72,74);}else{doc.setTextColor(201,151,58);}
+      doc.text(""+st,lm+137,y+3);
+      doc.setTextColor(107,158,120); doc.text(""+(r.prod.stockBodega||0),lm+163,y+3);
+      y+=7;
+    });
+  }
+
+  // ── PIE ──
+  doc.setTextColor(155,155,171); doc.setFontSize(8); doc.setFont("helvetica","normal");
+  doc.text("L-Ash Art  |  "+hoy,105,290,{align:"center"});
+
+  var blob=doc.output("blob"), f=new File([blob],"reporte-"+hoy.replace(/\//g,"-")+".pdf",{type:"application/pdf"});
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[f]})) navigator.share({title:"Reporte L-Ash Art "+hoy,files:[f]}).catch(function(){});
+  else doc.save("reporte-"+hoy.replace(/\//g,"-")+".pdf");
+}
 
   // Ganancia
   var gan=0;
