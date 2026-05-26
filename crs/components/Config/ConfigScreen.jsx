@@ -1,0 +1,96 @@
+import { useState } from 'react'
+import { Settings, Shield, Users, Bell, Database } from 'lucide-react'
+import { useDB } from '../../context/DBContext'
+import { useToast } from '../Layout/Toast'
+import { hashStr } from '../../utils/firebase'
+import Header from '../Layout/Header'
+
+export default function ConfigScreen() {
+  const { db, save } = useDB()
+  const toast = useToast()
+  const [empPin1, setEmpPin1] = useState('')
+  const [empPin2, setEmpPin2] = useState('')
+
+  async function saveEmpPin() {
+    if (empPin1.length !== 4 || !/^\d{4}$/.test(empPin1)) { toast('El PIN debe ser 4 dígitos', 'er'); return }
+    if (empPin1 !== empPin2) { toast('Los PINs no coinciden', 'er'); return }
+    const h = await hashStr(empPin1)
+    await save('cfg', { ...db.cfg, empPinHash: h })
+    setEmpPin1(''); setEmpPin2('')
+    toast('PIN de empleada guardado', 'ok')
+  }
+
+  return (
+    <div>
+      <Header title="Configuración" />
+      <div className="px-4 py-4 space-y-4">
+
+        {/* App info */}
+        <div className="card text-center py-6">
+          <div className="w-16 h-16 rounded-full bg-rosa mx-auto flex items-center justify-center mb-3">
+            <span className="font-serif text-2xl text-white">LA</span>
+          </div>
+          <h2 className="font-serif text-xl font-semibold text-ink">L-Ash Art</h2>
+          <p className="text-xs text-ink-3 mt-1">Sistema de punto de venta · v1.0</p>
+        </div>
+
+        {/* Employee PIN */}
+        <div className="card space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-rosa-light flex items-center justify-center">
+              <Users size={16} className="text-rosa"/>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-ink">PIN de Empleada</p>
+              <p className="text-xs text-ink-3">Acceso con funciones limitadas</p>
+            </div>
+          </div>
+          <input
+            className="input"
+            type="password" inputMode="numeric"
+            placeholder="Nuevo PIN (4 dígitos)"
+            maxLength={4}
+            value={empPin1}
+            onChange={e=>setEmpPin1(e.target.value)}
+          />
+          <input
+            className="input"
+            type="password" inputMode="numeric"
+            placeholder="Confirmar PIN"
+            maxLength={4}
+            value={empPin2}
+            onChange={e=>setEmpPin2(e.target.value)}
+          />
+          <button onClick={saveEmpPin} className="btn-primary w-full text-sm">Guardar PIN</button>
+        </div>
+
+        {/* Business info */}
+        <div className="card space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 rounded-lg bg-gold-light flex items-center justify-center">
+              <Settings size={16} className="text-gold"/>
+            </div>
+            <p className="text-sm font-bold text-ink">Información del negocio</p>
+          </div>
+          <input className="input" placeholder="Nombre del negocio" defaultValue={db.cfg?.nombre||'L-Ash Art'} />
+          <input className="input" placeholder="WhatsApp" defaultValue={db.cfg?.whatsapp||'+525583810422'} />
+          <input className="input" placeholder="Instagram" defaultValue={db.cfg?.instagram||'@lash_art_store'} />
+        </div>
+
+        {/* Security */}
+        <div className="card">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-ok-light flex items-center justify-center">
+              <Shield size={16} className="text-ok"/>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-ink">Seguridad</p>
+              <p className="text-xs text-ink-3">PIN de dueña: configurado ✓</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  )
+}
