@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'DM Sans', sans-serif; overscroll-behavior: none; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-rosa text-white font-semibold rounded-xl2 px-4 py-3 active:opacity-80 transition-opacity;
+  }
+  .btn-secondary {
+    @apply bg-surface border border-gray-200 text-ink font-semibold rounded-xl2 px-4 py-3 active:opacity-80 transition-opacity;
+  }
+  .btn-danger {
+    @apply bg-danger-light text-danger font-semibold rounded-xl2 px-4 py-3 border border-red-200 active:opacity-80 transition-opacity;
+  }
+  .card {
+    @apply bg-white rounded-xl2 shadow-card p-4;
+  }
+  .chip {
+    @apply px-3 py-1.5 rounded-full text-sm font-medium border border-gray-200 text-ink-2 active:opacity-70 transition-opacity;
+  }
+  .chip-active {
+    @apply bg-rosa text-white border-rosa;
+  }
+  .input {
+    @apply w-full bg-surface-bg border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-ink placeholder-ink-3 focus:outline-none focus:border-rosa transition-colors;
+  }
+  .badge-rosa { @apply inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-rosa-light text-rosa; }
+  .badge-gold { @apply inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-gold-light text-gold; }
+  .badge-ok { @apply inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-ok-light text-ok; }
+  .badge-danger { @apply inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-danger-light text-danger; }
+  .section-title { @apply text-[10px] font-bold uppercase tracking-wider text-ink-3 mb-2; }
+}
+
+::-webkit-scrollbar { width: 0; height: 0; }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0); }
