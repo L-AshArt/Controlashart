@@ -8,7 +8,7 @@ export default function Header({ title, right }) {
     <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-100 px-4 py-3 flex items-center justify-between">
       <div className="flex items-center gap-2">
         <div className="w-9 h-9 rounded-full bg-rosa flex items-center justify-center overflow-hidden shadow-sm">
-          <img src="icon-180.png" alt="LA" className="w-full h-full object-cover"
+          <img src="/Controlashart/icon-180.png" alt="LA" className="w-full h-full object-cover"
             onError={e=>{e.target.style.display='none';e.target.nextSibling.style.display='flex'}}/>
           <span className="font-serif text-sm text-white font-semibold hidden w-full h-full items-center justify-center">LA</span>
         </div>

@@ -22,7 +22,7 @@ export default function PinScreen() {
     <div className="min-h-screen bg-ink flex flex-col items-center justify-center px-8 select-none">
       <div className="mb-8 text-center">
         <div className="w-20 h-20 rounded-full bg-rosa mx-auto flex items-center justify-center mb-3 overflow-hidden shadow-lg">
-          <img src="icon-180.png" alt="L-Ash Art" className="w-full h-full object-cover"
+          <img src="/Controlashart/icon-180.png"alt="L-Ash Art" className=lt-full h-full object-cover"
             onError={e=>{e.target.style.display='none';e.target.nextSibling.style.display='flex'}}/>
           <span className="font-serif text-2xl text-white font-semibold hidden w-full h-full items-center justify-center">LA</span>
         </div>
