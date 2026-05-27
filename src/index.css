@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { -webkit-tap-highlight-color: transparent; }
+  body { font-family: sans-serif; overscroll-behavior: none; }
+}
+
+@layer components {
+  .btn-primary { @apply bg-rosa text-white font-semibold rounded-xl2 px-4 py-3; }
+  .btn-secondary { @apply bg-white border border-gray-200 text-ink font-semibold rounded-xl2 px-4 py-3; }
+  .btn-danger { @apply bg-red-50 text-red-500 font-semibold rounded-xl2 px-4 py-3 border border-red-200; }
+  .card { @apply bg-white rounded-xl2 shadow-card p-4; }
+  .chip { @apply px-3 py-1.5 rounded-full text-sm font-medium border border-gray-200 text-gray-500; }
+  .chip-active { @apply bg-rosa text-white border-rosa; }
+  .input { @apply w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 outline-none; }
+  .badge-rosa { @apply inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-pink-50 text-rosa; }
+  .badge-gold { @apply inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-50 text-gold; }
+  .badge-ok { @apply inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-50 text-ok; }
+  .badge-danger { @apply inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-50 text-danger; }
+  .section-title { @apply text-xs font-bold uppercase tracking-wider text-gray-400 mb-2; }
+}
+
+::-webkit-scrollbar { width: 0; height: 0; }
