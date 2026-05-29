@@ -1,0 +1,94 @@
+import { useEffect, useRef, useState } from 'react'
+import { X, Share2, MapPin } from 'lucide-react'
+
+const MAPS_URL = "https://maps.app.goo.gl/ZBwxJ18qeHzyDxBH7"
+const LOGO_URL = "/Controlashart/icon-180.png"
+
+export default function TicketModal({ venta, onClose }) {
+  const qrRef = useRef(null)
+  const ticketURL = window.location.origin + '/Controlashart/ticket.html?v=' + venta.num
+  const m = venta.metodo==='efectivo'?'Efectivo':venta.metodo==='tarjeta'?'Tarjeta':'Transferencia'
+
+  useEffect(() => {
+    if (!qrRef.current) return
+    qrRef.current.innerHTML = ''
+    const tryQR = () => {
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(qrRef.current, { text: ticketURL, width: 180, height: 180,
+          colorDark: '#1A1A2E', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M })
+      } else setTimeout(tryQR, 500)
+    }
+    tryQR()
+  }, [ticketURL])
+
+  // Abre ticket.html con ?share=1 en nueva pestaña.
+  // ticket.html genera el PDF y abre el share dialog directamente.
+  function sharePDF() {
+    window.open(ticketURL + '&share=1', '_blank')
+  }
+
+  const row = { display:'flex', justifyContent:'space-between', padding:'6px 0', borderBottom:'1px solid #F5F5FA' }
+
+  return (
+    <div className="fixed inset-0 z-40 bg-black/50 flex items-end">
+      <div className="bg-white w-full rounded-t-2xl" style={{maxHeight:'92vh',overflowY:'auto'}}>
+
+        <div className="px-5 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
+          <h3 className="text-base font-bold text-ink">Venta #{venta.num} completada</h3>
+          <button onClick={onClose}><X size={20} className="text-ink-2"/></button>
+        </div>
+
+        <div style={{background:'#FAF0F2',padding:'12px',fontFamily:'Arial,sans-serif'}}>
+          <div style={{background:'#fff',borderRadius:'16px',padding:'16px',marginBottom:'10px'}}>
+            <div style={{textAlign:'center'}}>
+              <img src={LOGO_URL}
+                style={{width:'64px',height:'64px',borderRadius:'50%',objectFit:'cover',margin:'0 auto 8px',display:'block'}}
+                onError={e=>{e.target.style.display='none'}}/>
+              <div style={{fontSize:'20px',fontWeight:'700',color:'#1C1C2E'}}>L-Ash Art</div>
+              <div style={{fontSize:'11px',color:'#6B6B7B',marginTop:'2px'}}>¡Gracias por tu compra! 💕</div>
+              <div style={{fontSize:'10px',color:'#9B9BAB',marginTop:'2px'}}>Venta #{venta.num} · {venta.fecha} {venta.hora}</div>
+            </div>
+            <div style={{borderTop:'1px dashed #EAEAF0',margin:'10px 0'}}/>
+            {venta.items?.map((it,i) => (
+              <div key={i} style={row}>
+                <div style={{flex:1,marginRight:'8px'}}>
+                  <div style={{fontSize:'11px',fontWeight:'600',color:'#1C1C2E'}}>{it.nombre}</div>
+                  <div style={{fontSize:'10px',color:'#9B9BAB'}}>{it.qty} ud. x ${it.precio?.toFixed(2)}</div>
+                </div>
+                <div style={{fontSize:'11px',fontWeight:'700',color:'#1C1C2E'}}>${(it.qty*it.precio).toFixed(2)}</div>
+              </div>
+            ))}
+            <div style={{borderTop:'1px dashed #EAEAF0',margin:'8px 0'}}/>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:'15px',fontWeight:'700',color:'#1C1C2E',padding:'4px 0'}}>
+              <span>Total</span><span>${venta.tot?.toFixed(2)}</span>
+            </div>
+            <span style={{background:'#FAF0F2',color:'#C4798A',fontSize:'10px',fontWeight:'700',padding:'2px 8px',borderRadius:'20px',display:'inline-block',marginTop:'6px'}}>{m}</span>
+          </div>
+        </div>
+
+        <div className="px-5 py-3 flex flex-col items-center gap-2 border-t border-gray-100">
+          <p className="section-title">Codigo QR del ticket</p>
+          <div ref={qrRef} className="rounded-xl overflow-hidden"/>
+          <p className="text-xs text-ink-3 text-center">El cliente lo escanea para ver su ticket</p>
+        </div>
+
+        <div className="px-5 pb-6 pt-2 space-y-2">
+          <a href={MAPS_URL} target="_blank" rel="noreferrer"
+            className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 no-underline">
+            <MapPin size={18} className="text-blue-500 flex-shrink-0"/>
+            <div>
+              <p className="text-sm font-bold text-ink">Como llegar</p>
+              <p className="text-xs text-blue-500">Ver en Google Maps</p>
+            </div>
+          </a>
+          <button onClick={sharePDF}
+            className="btn-primary w-full flex items-center justify-center gap-2">
+            <Share2 size={18}/> Compartir PDF
+          </button>
+          <button onClick={onClose} className="btn-secondary w-full">Cerrar</button>
+        </div>
+
+      </div>
+    </div>
+  )
+}
